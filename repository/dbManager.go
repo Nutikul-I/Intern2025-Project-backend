@@ -4,52 +4,31 @@ import (
 	"database/sql"
 	"fmt"
 
-	_ "github.com/denisenkom/go-mssqldb"
+	_ "github.com/go-sql-driver/mysql"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 )
 
-// Replace with your own connection parameters
-var server = "x"
-var port = 1433
-var user = "x"
-var password = "x"
-var database = "x"
 var DB *sql.DB
 
 func Init() {
-	server = viper.GetString("DB_SERVER")
-	port = 1433
-	user = viper.GetString("DB_USER")
-	password = viper.GetString("DB_PASS")
-	database = viper.GetString("DB_INST")
-	// Create connection string
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&charset=utf8mb4&loc=Asia%%2FBangkok",
+		viper.GetString("DB_USER"),
+		viper.GetString("DB_PASS"),
+		viper.GetString("DB_SERVER"),
+		viper.GetString("DB_PORT"),
+		viper.GetString("DB_INST"),
+	)
+
 	var err error
-
-	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s", server, user, password, port, database)
-
-	// Create connection pool
-	DB, err = sql.Open("sqlserver", connString)
-
+	DB, err = sql.Open("mysql", dsn)
 	if err != nil {
-		log.Error("**** Error creating connection pool: " + err.Error())
+		log.Fatalf("เปิด connection ไม่ได้: %v", err)
 	}
-	log.Debug("==-- Connected! --==")
-
+	if err = DB.Ping(); err != nil {
+		log.Fatalf("Ping DB ล้มเหลว: %v", err)
+	}
+	log.Info("🎉 MySQL connected")
 }
 
-func ConnectDB() *sql.DB {
-	var err error
-
-	if DB == nil {
-		connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s", server, user, password, port, database)
-
-		DB, err = sql.Open("sqlserver", connString)
-		if err != nil {
-			log.Error("**** Error creating connection pool: " + err.Error())
-		}
-	}
-
-	log.Debug("==-- Connected! --==")
-	return DB
-}
+func ConnectDB() *sql.DB { return DB }
