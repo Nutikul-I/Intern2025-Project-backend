@@ -3,48 +3,61 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"strconv"
 
-	_ "github.com/denisenkom/go-mssqldb"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
-// Replace with your own connection parameters
-var server = "x"
-var port = 1433
-var user = "x"
-var password = "x"
-var database = "x"
 var DB *sql.DB
 
 func Init() {
-	server = viper.GetString("DB_SERVER")
-	port = 1433
-	user = viper.GetString("DB_USER")
-	password = viper.GetString("DB_PASS")
-	database = viper.GetString("DB_INST")
-	// Create connection string
-	var err error
+	err := godotenv.Load()
+	if err != nil {
+		log.Warn("Could not load .env file, using system env variables")
+	}
 
-	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s", server, user, password, port, database)
+	server, portStr, user, password, database := SetDataBaseEnv()
 
-	// Create connection pool
-	DB, err = sql.Open("sqlserver", connString)
+	port := 3306
+	port, err = strconv.Atoi(portStr)
+	if err != nil {
+		log.Error("Invalid port number in environment variable: " + err.Error())
+		port = 3306
+	}
 
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", user, password, server, port, database)
+
+	DB, err = sql.Open("mysql", dsn)
 	if err != nil {
 		log.Error("**** Error creating connection pool: " + err.Error())
+		return
 	}
 	log.Debug("==-- Connected! --==")
-
 }
 
 func ConnectDB() *sql.DB {
-	var err error
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Warn("Could not load .env file, using system env variables")
+	}
+
+	server, portStr, user, password, database := SetDataBaseEnv()
+
+	port := 3306
+	port, err = strconv.Atoi(portStr)
+	if err != nil {
+		log.Error("Invalid port number in environment variable: " + err.Error())
+		port = 3306
+	}
 
 	if DB == nil {
-		connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s", server, user, password, port, database)
+		dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", user, password, server, port, database)
 
-		DB, err = sql.Open("sqlserver", connString)
+		DB, err = sql.Open("mysql", dsn)
 		if err != nil {
 			log.Error("**** Error creating connection pool: " + err.Error())
 		}
@@ -52,4 +65,17 @@ func ConnectDB() *sql.DB {
 
 	log.Debug("==-- Connected! --==")
 	return DB
+}
+
+func SetDataBaseEnv() (string, string, string, string, string) {
+	err := godotenv.Load()
+	if err != nil {
+		panic("Failed to load .env file")
+	}
+
+	return os.Getenv("DB_SERVER"),
+		os.Getenv("SERVER_PORT"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_PASS"),
+		os.Getenv("DB_INST")
 }
