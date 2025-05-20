@@ -21,6 +21,13 @@ func SetupRoutes(app *fiber.App) {
 		return c.Next()
 	})
 
+	productCtl := controller.NewProductController(
+		service.NewProductService(handler.NewProductHandler()),
+	)
+	product := api.Group("/api/product")
+	product.Get("/products", productCtl.GetProducts)
+	product.Get("/:id", productCtl.GetProduct)
+
 	merchant := api.Group("/api/merchant")
 	merchant.Get("/merchant", merchantController.GetMerchant)
 	merchant.Post("/create-merchant", merchantController.CreateMerchant)
