@@ -56,6 +56,7 @@ func SetupPermissionRoutes(router fiber.Router) {
 
 	// Setup permission endpoints
 	permissionRoutes.Get("/", permissionController.GetPermissions)
+	permissionRoutes.Get("/:id", permissionController.GetPermissionByID)
 	permissionRoutes.Get("/detail", permissionController.GetPermissionByID)
 	permissionRoutes.Post("/", permissionController.CreatePermission)
 	permissionRoutes.Put("/", permissionController.UpdatePermission)
