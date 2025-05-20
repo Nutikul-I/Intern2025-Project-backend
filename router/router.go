@@ -2,38 +2,62 @@ package router
 
 import (
 	"payso-internal-api/controller"
-	"payso-internal-api/handler"
-	"payso-internal-api/repository"
 	"payso-internal-api/service"
-	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	log "github.com/sirupsen/logrus"
 )
 
+// Setup routes for the application
 func SetupRoutes(app *fiber.App) {
+	// Setup API group
+	api := app.Group("/api")
 
-	merchantController := controller.NewMerchantController(service.NewMerchantService(handler.NewMerchantHandler()))
+	// Setup v1 routes
+	SetupV1Routes(api)
 
-	api := app.Group("/", func(c *fiber.Ctx) error {
-		if !strings.Contains(c.Request().URI().String(), "/ping") {
-			log.Infof("all : %v", c.Request().URI().String())
-		}
-		return c.Next()
-	})
+	log.Info("Routes setup completed")
+}
 
-	merchant := api.Group("/api/merchant")
-	merchant.Get("/merchant", merchantController.GetMerchant)
-	merchant.Post("/create-merchant", merchantController.CreateMerchant)
-	merchant.Delete("/delete-merchant", merchantController.DeleteMerchant)
+// SetupV1Routes configures all v1 API routes
+func SetupV1Routes(api fiber.Router) {
+	v1 := api.Group("/v1")
 
-	api.Get("/pingdb", func(c *fiber.Ctx) error {
-		db := repository.ConnectDB()
-		if err := db.Ping(); err != nil {
-			log.Error("DB Ping Failed: ", err)
-			return c.Status(500).SendString("❌ DB not connected: " + err.Error())
-		}
-		return c.SendString("✅ DB connected!")
-	})
+	// Setup merchant routes
+	SetupMerchantRoutes(v1)
 
+	// Setup permission routes
+	SetupPermissionRoutes(v1)
+}
+
+// SetupMerchantRoutes configures all merchant related routes
+func SetupMerchantRoutes(router fiber.Router) {
+	// Create services and controllers
+	merchantService := service.NewMerchantService(nil) // หรือส่ง handler.NewMerchantHandler() เข้าไปหากต้องการ
+	merchantController := controller.NewMerchantController(merchantService)
+
+	// Create merchant route group
+	merchantRoutes := router.Group("/merchant")
+
+	// Setup merchant endpoints
+	merchantRoutes.Get("/", merchantController.GetMerchant)
+	merchantRoutes.Post("/", merchantController.CreateMerchant)
+	merchantRoutes.Delete("/", merchantController.DeleteMerchant)
+}
+
+// SetupPermissionRoutes configures all permission related routes
+func SetupPermissionRoutes(router fiber.Router) {
+	// Create services and controllers
+	permissionService := service.NewPermissionService()
+	permissionController := controller.NewPermissionController(permissionService)
+
+	// Create permission route group
+	permissionRoutes := router.Group("/permission")
+
+	// Setup permission endpoints
+	permissionRoutes.Get("/", permissionController.GetPermissions)
+	permissionRoutes.Get("/detail", permissionController.GetPermissionByID)
+	permissionRoutes.Post("/", permissionController.CreatePermission)
+	permissionRoutes.Put("/", permissionController.UpdatePermission)
+	permissionRoutes.Delete("/", permissionController.DeletePermission)
 }
