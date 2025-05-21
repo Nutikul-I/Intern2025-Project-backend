@@ -2,17 +2,17 @@ package model
 
 type (
 	Permission struct {
-		ID        int    `json:"id"`
-		RoleID    int    `json:"role_id"`
-		Module    string `json:"module"`
-		CanView   bool   `json:"can_view"`
-		CanCreate bool   `json:"can_create"`
-		CanEdit   bool   `json:"can_edit"`
-		CanDelete bool   `json:"can_delete"`
-		CreatedAt string `json:"created_at"`
-		UpdatedAt string `json:"updated_at"`
-		IsDeleted bool   `json:"is_deleted"`
-		DeletedAt string `json:"deleted_at"`
+		ID        int     `json:"id" db:"id"`
+		RoleID    int     `json:"role_id" db:"role_id"`
+		Module    string  `json:"module" db:"module"`
+		CanView   bool    `json:"can_view" db:"can_view"`
+		CanCreate bool    `json:"can_create" db:"can_create"`
+		CanEdit   bool    `json:"can_edit" db:"can_edit"`
+		CanDelete bool    `json:"can_delete" db:"can_delete"`
+		CreatedAt string  `json:"created_at" db:"created_at"`
+		UpdatedAt *string `json:"updated_at" db:"updated_at"` // ใช้ pointer เพื่อรองรับค่า NULL
+		IsDeleted bool    `json:"is_deleted" db:"is_deleted"`
+		DeletedAt *string `json:"deleted_at" db:"deleted_at"` // ใช้ pointer เพื่อรองรับค่า NULL
 	}
 
 	PermissionPayload struct {
@@ -133,7 +133,7 @@ UPDATE permissions
 SET 
 	is_deleted = 1,
 	deleted_at = NOW()
-WHERE id = ?`
+	WHERE id = ?`
 
 var SQL_GET_PERMISSION_BY_ID = `
 SELECT 

@@ -26,4 +26,18 @@ func SetupRoutes(app *fiber.App) {
 	merchant.Post("/create-merchant", merchantController.CreateMerchant)
 	merchant.Delete("/delete-merchant", merchantController.DeleteMerchant)
 
+	permissionService := service.NewPermissionService()
+	permissionController := controller.NewPermissionController(permissionService)
+
+	permissionRoutes := api.Group("/api/permission")
+
+	// Setup permission endpoints
+	permissionRoutes.Get("/", permissionController.GetPermissions)
+	permissionRoutes.Get("/detail", permissionController.GetPermissionByID) // คงไว้สำหรับ query parameter
+	permissionRoutes.Get("/:id", permissionController.GetPermissionByID)    // เพิ่มสำหรับ path parameter
+	permissionRoutes.Post("/create-permission", permissionController.CreatePermission)
+	permissionRoutes.Put("/update-permission", permissionController.UpdatePermission)
+	permissionRoutes.Delete("/delete-permission", permissionController.DeletePermission)
+	permissionRoutes.Delete("/delete-permission/:id", permissionController.DeletePermission)
+
 }
