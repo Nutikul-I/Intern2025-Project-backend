@@ -32,6 +32,16 @@ func SetupRoutes(app *fiber.App) {
 	product.Put("/:id", productCtl.UpdateProduct)
 	product.Delete("/:id", productCtl.DeleteProduct)
 
+	customerCtl := controller.NewCustomerController(
+		service.NewCustomerService(handler.NewCustomerHandler()),
+	)
+	cust := api.Group("/api/customer")      // /api/customer...
+	cust.Get("/", customerCtl.GetCustomers) // list ?page=1&row=20
+	cust.Get("/:id", customerCtl.GetCustomer)
+	cust.Post("/", customerCtl.CreateCustomer)
+	cust.Put("/:id", customerCtl.UpdateCustomer)
+	cust.Delete("/:id", customerCtl.DeleteCustomer)
+
 	merchant := api.Group("/api/merchant")
 	merchant.Get("/merchant", merchantController.GetMerchant)
 	merchant.Post("/create-merchant", merchantController.CreateMerchant)
