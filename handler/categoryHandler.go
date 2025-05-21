@@ -1,0 +1,11 @@
+package handler
+
+type CategoryHandler interface {
+}
+
+type categoryHandler struct {
+}
+
+func NewcategoryHandler() categoryHandler {
+	return categoryHandler{}
+}
