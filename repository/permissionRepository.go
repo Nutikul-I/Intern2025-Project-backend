@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"payso-internal-api/model"
 
 	"github.com/blockloop/scan"
@@ -219,12 +220,17 @@ func GetPermissionByIDRepository(id int) (model.Permission, error) {
 	conn := ConnectDB()
 	ctx := context.Background()
 
+	log.Infof("GetPermissionByIDRepository: Searching for ID = %d", id)
+
 	// Check if database is alive.
 	err := conn.PingContext(ctx)
 	if err != nil {
 		log.Errorf("Error PingContext: %v", err)
 		return model.Permission{}, err
 	}
+
+	// เพิ่ม dump sql และ parameters เพื่อตรวจสอบ
+	log.Infof("SQL Query: %s, Parameters: [%d]", model.SQL_GET_PERMISSION_BY_ID, id)
 
 	rows, err := conn.QueryContext(ctx, model.SQL_GET_PERMISSION_BY_ID, id)
 	if err != nil {
@@ -233,11 +239,54 @@ func GetPermissionByIDRepository(id int) (model.Permission, error) {
 	}
 	defer rows.Close()
 
-	var permission model.Permission
-	err = scan.Row(&permission, rows)
+	// Check if rows are empty
+	hasRows := rows.Next()
+	if !hasRows {
+		log.Errorf("No rows found for ID = %d", id)
+		return model.Permission{}, fmt.Errorf("permission with ID = %d not found", id)
+	}
+
+	// Reset rows
+	rows.Close()
+	rows, err = conn.QueryContext(ctx, model.SQL_GET_PERMISSION_BY_ID, id)
 	if err != nil {
-		log.Errorf("Error scan row : %v", err)
+		log.Errorf("Error re-executing query: %v", err)
 		return model.Permission{}, err
+	}
+	defer rows.Close()
+
+	var permission model.Permission
+
+	// แทนที่จะใช้ scan.Row, ลองใช้ rows.Scan โดยตรง
+	if rows.Next() {
+		err = rows.Scan(
+			&permission.ID,
+			&permission.RoleID,
+			&permission.Module,
+			&permission.CanView,
+			&permission.CanCreate,
+			&permission.CanEdit,
+			&permission.CanDelete,
+			&permission.CreatedAt,
+			&permission.UpdatedAt,
+			&permission.IsDeleted,
+			&permission.DeletedAt,
+		)
+		if err != nil {
+			log.Errorf("Error scanning row: %v", err)
+			return model.Permission{}, err
+		}
+	} else {
+		log.Errorf("No data found after resetting rows cursor")
+		return model.Permission{}, fmt.Errorf("no data found for permission ID = %d", id)
+	}
+
+	// ตรวจสอบข้อมูลที่ได้รับ
+	log.Infof("Retrieved permission data: %+v", permission)
+
+	if permission.ID == 0 {
+		log.Errorf("Permission ID is 0 despite selecting ID = %d", id)
+		return model.Permission{}, fmt.Errorf("invalid permission data retrieved for ID = %d", id)
 	}
 
 	return permission, nil
