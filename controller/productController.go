@@ -40,10 +40,12 @@ func (ctl *productController) GetProducts(c *fiber.Ctx) error {
 }
 
 func (ctl *productController) GetProduct(c *fiber.Ctx) error {
-	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	idStr := c.Query("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || id <= 0 {
 		return c.Status(fiber.StatusBadRequest).SendString("invalid id")
 	}
+
 	prod, err := ctl.svc.GetProductDetail(c.Context(), id)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).SendString("product not found")
@@ -66,7 +68,8 @@ func (ctl *productController) CreateProduct(c *fiber.Ctx) error {
 
 /* ---------- UPDATE ---------- */
 func (ctl *productController) UpdateProduct(c *fiber.Ctx) error {
-	pid, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	idStr := c.Query("id")
+	pid, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || pid <= 0 {
 		return c.Status(fiber.StatusBadRequest).SendString("invalid id")
 	}
@@ -84,7 +87,8 @@ func (ctl *productController) UpdateProduct(c *fiber.Ctx) error {
 
 /* ---------- DELETE ---------- */
 func (ctl *productController) DeleteProduct(c *fiber.Ctx) error {
-	pid, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	idStr := c.Query("id")
+	pid, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || pid <= 0 {
 		return c.Status(fiber.StatusBadRequest).SendString("invalid id")
 	}
