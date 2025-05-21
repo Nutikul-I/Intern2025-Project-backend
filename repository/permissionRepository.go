@@ -50,7 +50,6 @@ func GetTotalPermissionsRepository(id int) (int, error) {
 	conn := ConnectDB()
 	ctx := context.Background()
 
-	// Check if database is alive.
 	err := conn.PingContext(ctx)
 	if err != nil {
 		log.Errorf("Error PingContext: %v", err)
@@ -78,14 +77,12 @@ func CreatePermissionRepository(body model.CreatePermissionPayload) (model.Updat
 	conn := ConnectDB()
 	ctx := context.Background()
 
-	// Check if database is alive.
 	err := conn.PingContext(ctx)
 	if err != nil {
 		log.Errorf("Error PingContext: %v", err)
 		return model.UpdateResponse{}, err
 	}
 
-	// Check if permission already exists for this role_id and module
 	rows_check, err := conn.QueryContext(ctx, model.SQL_CHECK_PERMISSION_DUPLICATE,
 		body.RoleID,
 		body.Module)
@@ -98,11 +95,10 @@ func CreatePermissionRepository(body model.CreatePermissionPayload) (model.Updat
 	var existingPermission model.Permission
 	err = scan.Row(&existingPermission, rows_check)
 	if err == nil {
-		// Found existing permission, return error
+
 		return model.UpdateResponse{StatusCode: 400, Message: "Permission already exists for this role and module"}, nil
 	}
 
-	// Insert new permission
 	_, err = conn.ExecContext(ctx, model.SQL_CREATE_PERMISSION,
 		body.RoleID,
 		body.Module,
@@ -122,14 +118,12 @@ func UpdatePermissionRepository(body model.UpdatePermissionPayload) (model.Updat
 	conn := ConnectDB()
 	ctx := context.Background()
 
-	// Check if database is alive.
 	err := conn.PingContext(ctx)
 	if err != nil {
 		log.Errorf("Error PingContext: %v", err)
 		return model.UpdateResponse{}, err
 	}
 
-	// Check if permission exists
 	rows_check, err := conn.QueryContext(ctx, model.SQL_CHECK_PERMISSION, body.ID)
 	if err != nil {
 		log.Errorf("Error executing query: %v", err)
@@ -140,11 +134,10 @@ func UpdatePermissionRepository(body model.UpdatePermissionPayload) (model.Updat
 	var existingPermission model.Permission
 	err = scan.Row(&existingPermission, rows_check)
 	if err != nil {
-		// Permission not found
+
 		return model.UpdateResponse{StatusCode: 404, Message: "Permission not found"}, nil
 	}
 
-	// Check if updated role_id and module combination exists on another permission
 	if existingPermission.RoleID != body.RoleID || existingPermission.Module != body.Module {
 		rows_dup, err := conn.QueryContext(ctx, model.SQL_CHECK_PERMISSION_DUPLICATE,
 			body.RoleID,
@@ -163,7 +156,6 @@ func UpdatePermissionRepository(body model.UpdatePermissionPayload) (model.Updat
 		}
 	}
 
-	// Update permission
 	_, err = conn.ExecContext(ctx, model.SQL_UPDATE_PERMISSION,
 		body.RoleID,
 		body.Module,
@@ -184,14 +176,12 @@ func DeletePermissionRepository(id int) (model.UpdateResponse, error) {
 	conn := ConnectDB()
 	ctx := context.Background()
 
-	// Check if database is alive.
 	err := conn.PingContext(ctx)
 	if err != nil {
 		log.Errorf("Error PingContext: %v", err)
 		return model.UpdateResponse{}, err
 	}
 
-	// Check if permission exists
 	rows_check, err := conn.QueryContext(ctx, model.SQL_CHECK_PERMISSION, id)
 	if err != nil {
 		log.Errorf("Error executing query: %v", err)
@@ -202,11 +192,10 @@ func DeletePermissionRepository(id int) (model.UpdateResponse, error) {
 	var existingPermission model.Permission
 	err = scan.Row(&existingPermission, rows_check)
 	if err != nil {
-		// Permission not found
+
 		return model.UpdateResponse{StatusCode: 404, Message: "Permission not found"}, nil
 	}
 
-	// Perform soft delete
 	_, err = conn.ExecContext(ctx, model.SQL_DELETE_PERMISSION, id)
 	if err != nil {
 		log.Errorf("Error executing query: %v", err)
@@ -222,14 +211,12 @@ func GetPermissionByIDRepository(id int) (model.Permission, error) {
 
 	log.Infof("GetPermissionByIDRepository: Searching for ID = %d", id)
 
-	// Check if database is alive.
 	err := conn.PingContext(ctx)
 	if err != nil {
 		log.Errorf("Error PingContext: %v", err)
 		return model.Permission{}, err
 	}
 
-	// เพิ่ม dump sql และ parameters เพื่อตรวจสอบ
 	log.Infof("SQL Query: %s, Parameters: [%d]", model.SQL_GET_PERMISSION_BY_ID, id)
 
 	rows, err := conn.QueryContext(ctx, model.SQL_GET_PERMISSION_BY_ID, id)
@@ -239,14 +226,12 @@ func GetPermissionByIDRepository(id int) (model.Permission, error) {
 	}
 	defer rows.Close()
 
-	// Check if rows are empty
 	hasRows := rows.Next()
 	if !hasRows {
 		log.Errorf("No rows found for ID = %d", id)
 		return model.Permission{}, fmt.Errorf("permission with ID = %d not found", id)
 	}
 
-	// Reset rows
 	rows.Close()
 	rows, err = conn.QueryContext(ctx, model.SQL_GET_PERMISSION_BY_ID, id)
 	if err != nil {
@@ -257,7 +242,6 @@ func GetPermissionByIDRepository(id int) (model.Permission, error) {
 
 	var permission model.Permission
 
-	// แทนที่จะใช้ scan.Row, ลองใช้ rows.Scan โดยตรง
 	if rows.Next() {
 		err = rows.Scan(
 			&permission.ID,
@@ -281,7 +265,6 @@ func GetPermissionByIDRepository(id int) (model.Permission, error) {
 		return model.Permission{}, fmt.Errorf("no data found for permission ID = %d", id)
 	}
 
-	// ตรวจสอบข้อมูลที่ได้รับ
 	log.Infof("Retrieved permission data: %+v", permission)
 
 	if permission.ID == 0 {
