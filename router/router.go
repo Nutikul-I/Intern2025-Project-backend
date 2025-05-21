@@ -47,10 +47,20 @@ func SetupRoutes(app *fiber.App) {
 		return c.SendString("✅ DB connected!")
 	})
 
+<<<<<<< HEAD
 	category := api.Group("/api/category")
 	category.Get("/category", categoryController.GetCategory)
 	category.Post("/create-category", categoryController.CreateCategory)
 	category.Put("/update-category", categoryController.UpdateCategory)
 	category.Delete("/delete-category", categoryController.DeleteCategory)
+=======
+	permissionRoutes := api.Group("/api/permission")
+
+	permissionRoutes.Get("/", permissionController.GetPermissions)            // GET /api/permission?id=0&page=1&row=10
+	permissionRoutes.Get("/detail", permissionController.GetPermissionByID)   // GET /api/permission/detail?id=123
+	permissionRoutes.Post("/create", permissionController.CreatePermission)   // POST /api/permission/create
+	permissionRoutes.Put("/update", permissionController.UpdatePermission)    // PUT /api/permission/update
+	permissionRoutes.Delete("/delete", permissionController.DeletePermission) // DELETE /api/permission/delete?id=123
+>>>>>>> feature/permission1
 
 }
