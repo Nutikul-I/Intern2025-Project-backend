@@ -3,6 +3,7 @@ package controller
 import (
 	"strconv"
 
+	"payso-internal-api/model"
 	"payso-internal-api/service"
 
 	"github.com/gofiber/fiber/v2"
@@ -12,6 +13,9 @@ import (
 type ProductController interface {
 	GetProducts(c *fiber.Ctx) error
 	GetProduct(c *fiber.Ctx) error
+	CreateProduct(c *fiber.Ctx) error
+	UpdateProduct(c *fiber.Ctx) error
+	DeleteProduct(c *fiber.Ctx) error
 }
 
 type productController struct {
@@ -45,4 +49,49 @@ func (ctl *productController) GetProduct(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).SendString("product not found")
 	}
 	return c.JSON(prod)
+}
+
+func (ctl *productController) CreateProduct(c *fiber.Ctx) error {
+	var req model.ProductCreate
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "invalid payload"})
+	}
+	id, err := ctl.svc.CreateProduct(c.Context(), req)
+	if err != nil {
+		log.Errorf("CreateProduct: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "cannot create"})
+	}
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"ProductID": id})
+}
+
+/* ---------- UPDATE ---------- */
+func (ctl *productController) UpdateProduct(c *fiber.Ctx) error {
+	pid, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil || pid <= 0 {
+		return c.Status(fiber.StatusBadRequest).SendString("invalid id")
+	}
+
+	var req model.ProductCreate
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "invalid payload"})
+	}
+	if err := ctl.svc.UpdateProduct(c.Context(), pid, req); err != nil {
+		log.Errorf("UpdateProduct: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "cannot update"})
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+/* ---------- DELETE ---------- */
+func (ctl *productController) DeleteProduct(c *fiber.Ctx) error {
+	pid, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil || pid <= 0 {
+		return c.Status(fiber.StatusBadRequest).SendString("invalid id")
+	}
+
+	if err := ctl.svc.DeleteProduct(c.Context(), pid); err != nil {
+		log.Errorf("DeleteProduct: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "cannot delete"})
+	}
+	return c.SendStatus(fiber.StatusNoContent)
 }
