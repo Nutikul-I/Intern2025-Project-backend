@@ -31,13 +31,10 @@ func SetupRoutes(app *fiber.App) {
 
 	permissionRoutes := api.Group("/api/permission")
 
-	// Setup permission endpoints
-	permissionRoutes.Get("/", permissionController.GetPermissions)
-	permissionRoutes.Get("/detail", permissionController.GetPermissionByID) // คงไว้สำหรับ query parameter
-	permissionRoutes.Get("/:id", permissionController.GetPermissionByID)    // เพิ่มสำหรับ path parameter
-	permissionRoutes.Post("/create-permission", permissionController.CreatePermission)
-	permissionRoutes.Put("/update-permission", permissionController.UpdatePermission)
-	permissionRoutes.Delete("/delete-permission", permissionController.DeletePermission)
-	permissionRoutes.Delete("/delete-permission/:id", permissionController.DeletePermission)
+	permissionRoutes.Get("/", permissionController.GetPermissions)            // GET /api/permission?id=0&page=1&row=10
+	permissionRoutes.Get("/detail", permissionController.GetPermissionByID)   // GET /api/permission/detail?id=123
+	permissionRoutes.Post("/create", permissionController.CreatePermission)   // POST /api/permission/create
+	permissionRoutes.Put("/update", permissionController.UpdatePermission)    // PUT /api/permission/update
+	permissionRoutes.Delete("/delete", permissionController.DeletePermission) // DELETE /api/permission/delete?id=123
 
 }

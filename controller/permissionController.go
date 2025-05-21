@@ -190,21 +190,19 @@ func (ctl *permissionController) DeletePermission(c *fiber.Ctx) error {
 func (ctl *permissionController) GetPermissionByID(c *fiber.Ctx) error {
 	log.Infof("==-- GetPermissionByID --==")
 
-	var requestID int
-	var err error
+	// ใช้เฉพาะ query parameter
+	idParam := c.Query("id", "0")
+	log.Infof("Query parameter 'id' value: %s", idParam)
 
-	// ตรวจสอบว่ามี path parameter หรือไม่
-	if c.Params("id") != "" {
-		// กรณีมี path parameter (เช่น /permission/123)
-		requestID, err = strconv.Atoi(c.Params("id"))
-		if err != nil || requestID == 0 {
-			log.Errorf("Get Permission Error: Invalid ID from path parameter: %v", err)
-			return c.Status(400).JSON(fiber.Map{
-				"status":  "error",
-				"message": "Invalid permission ID in path",
-				"data":    nil,
-			})
-		}
+	requestID, err := strconv.Atoi(idParam)
+	if err != nil || requestID == 0 {
+		log.Errorf("Get Permission Error: Invalid ID from query parameter: %v", err)
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid permission ID in query",
+			"data":    nil,
+		})
+
 	} else {
 		// กรณีใช้ query parameter (เช่น /permission/detail?id=123)
 		idParam := c.Query("id", "0")
