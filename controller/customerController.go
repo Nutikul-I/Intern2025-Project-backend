@@ -19,9 +19,7 @@ type CustomerController interface {
 	DeleteCustomer(c *fiber.Ctx) error
 }
 
-type customerController struct {
-	svc service.CustomerService
-}
+type customerController struct{ svc service.CustomerService }
 
 func NewCustomerController(s service.CustomerService) CustomerController {
 	return &customerController{s}
@@ -42,7 +40,7 @@ func (ctl *customerController) GetCustomers(c *fiber.Ctx) error {
 
 /* ---------- DETAIL ---------- */
 func (ctl *customerController) GetCustomer(c *fiber.Ctx) error {
-	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	id, err := strconv.ParseInt(c.Query("id"), 10, 64) // ← query-string
 	if err != nil || id <= 0 {
 		return c.Status(400).SendString("invalid id")
 	}
@@ -59,8 +57,6 @@ func (ctl *customerController) CreateCustomer(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"message": "invalid payload"})
 	}
-
-	// ---- PASSWORD VALIDATION ----
 	if pw := strings.TrimSpace(req.Password); pw == "" {
 		return c.Status(400).JSON(fiber.Map{"message": "password required"})
 	}
@@ -78,7 +74,7 @@ func (ctl *customerController) CreateCustomer(c *fiber.Ctx) error {
 
 /* ---------- UPDATE ---------- */
 func (ctl *customerController) UpdateCustomer(c *fiber.Ctx) error {
-	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	id, err := strconv.ParseInt(c.Query("id"), 10, 64) // ← query-string
 	if err != nil || id <= 0 {
 		return c.Status(400).SendString("invalid id")
 	}
@@ -87,8 +83,6 @@ func (ctl *customerController) UpdateCustomer(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"message": "invalid payload"})
 	}
-
-	// ---- OPTIONAL PASSWORD ----
 	if pw := strings.TrimSpace(req.Password); pw != "" && len(pw) < 6 {
 		return c.Status(400).JSON(fiber.Map{"message": "password too short (min 6)"})
 	}
@@ -102,7 +96,7 @@ func (ctl *customerController) UpdateCustomer(c *fiber.Ctx) error {
 
 /* ---------- DELETE ---------- */
 func (ctl *customerController) DeleteCustomer(c *fiber.Ctx) error {
-	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	id, err := strconv.ParseInt(c.Query("id"), 10, 64) // ← query-string
 	if err != nil || id <= 0 {
 		return c.Status(400).SendString("invalid id")
 	}

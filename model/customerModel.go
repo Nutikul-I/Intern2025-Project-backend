@@ -36,16 +36,19 @@ type CustomerDetail struct {
 
 /* ============ SQL ============ */
 
+/* ---------- LIST ---------- */
 var SQL_GET_CUSTOMER_LIST = `
-SELECT id,
-       first_name     AS FirstName,
-       last_name      AS LastName,
-       email          AS Email,
-       phone          AS Phone,
-       national_id    AS NationalID
-FROM customers
-WHERE is_deleted = 0
-ORDER BY id DESC
+SELECT
+  c.id          AS ID,
+  u.first_name  AS FirstName,
+  u.last_name   AS LastName,
+  u.email       AS Email,
+  u.phone       AS Phone,
+  c.national_id AS NationalID
+FROM customers c
+JOIN users u ON u.id = c.user_id AND u.is_deleted = 0
+WHERE u.is_deleted = 0
+ORDER BY c.id DESC
 LIMIT ? OFFSET ?;
 `
 
@@ -53,15 +56,18 @@ var SQL_GET_TOTAL_CUSTOMER = `
 SELECT COUNT(*) FROM customers WHERE is_deleted = 0;
 `
 
+/* ---------- DETAIL ---------- */
 var SQL_GET_CUSTOMER_DETAIL = `
-SELECT id,
-       first_name     AS FirstName,
-       last_name      AS LastName,
-       email          AS Email,
-       phone          AS Phone,
-       national_id    AS NationalID
-FROM customers
-WHERE id = ? AND is_deleted = 0;
+SELECT
+  c.id          AS ID,
+  u.first_name  AS FirstName,
+  u.last_name   AS LastName,
+  u.email       AS Email,
+  u.phone       AS Phone,
+  c.national_id AS NationalID
+FROM customers c
+JOIN users u ON u.id = c.user_id AND u.is_deleted = 0
+WHERE c.id = ? AND u.is_deleted = 0;
 `
 
 var SQL_GET_ADDRESS_BY_CUSTOMER = `
@@ -78,6 +84,6 @@ WHERE customer_id = ? AND is_deleted = 0
 ORDER BY id;
 `
 
-/* --- soft-delete --- */
-var SQL_SOFT_DEL_CUSTOMER = `UPDATE customers  SET is_deleted = 1, deleted_at = NOW() WHERE id = ?`
-var SQL_SOFT_DEL_ADDRESSES = `UPDATE addresses  SET is_deleted = 1, deleted_at = NOW() WHERE customer_id = ?`
+/* ---------- SOFT-DELETE ---------- */
+var SQL_SOFT_DEL_USER = `UPDATE users SET is_deleted = 1, deleted_at = NOW() WHERE id = ?`
+var SQL_SOFT_DEL_ADDRESSES = `UPDATE addresses SET is_deleted = 1, deleted_at = NOW() WHERE customer_id = ?`

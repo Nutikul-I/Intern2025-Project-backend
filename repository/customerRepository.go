@@ -78,25 +78,36 @@ func CreateCustomer(ctx context.Context, c model.CustomerCreate) (int64, error) 
 		return 0, err
 	}
 
-	res, err := tx.ExecContext(ctx,
-		`INSERT INTO customers
-           (first_name,last_name,email,phone,national_id,password_hash)
-         VALUES (?,?,?,?,?,?)`,
-		c.FirstName, c.LastName, c.Email, c.Phone, c.NationalID, pwHash)
+	/* 1. users */
+	uRes, err := tx.ExecContext(ctx,
+		`INSERT INTO users (first_name,last_name,email,phone,password_hash)
+		 VALUES (?,?,?,?,?)`,
+		c.FirstName, c.LastName, c.Email, c.Phone, pwHash,
+	)
 	if err != nil {
 		tx.Rollback()
 		return 0, err
 	}
+	uid, _ := uRes.LastInsertId()
 
-	cid, _ := res.LastInsertId()
+	/* 2. customers */
+	cRes, err := tx.ExecContext(ctx,
+		`INSERT INTO customers (user_id,national_id) VALUES (?,?)`,
+		uid, c.NationalID,
+	)
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+	cid, _ := cRes.LastInsertId()
 
+	/* 3. addresses */
 	for _, a := range c.Addresses {
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO addresses
-			  (customer_id,name,address,city,district,subdistrict,postal_code,phone)
+			   (customer_id,name,address,city,district,subdistrict,postal_code,phone)
 			 VALUES (?,?,?,?,?,?,?,?)`,
-			cid, a.Name, a.Address, a.City, a.District, a.SubDistrict, a.PostalCode, a.Phone,
-		); err != nil {
+			cid, a.Name, a.Address, a.City, a.District, a.SubDistrict, a.PostalCode, a.Phone); err != nil {
 			tx.Rollback()
 			return 0, err
 		}
@@ -112,7 +123,14 @@ func UpdateCustomer(ctx context.Context, id int64, c model.CustomerCreate) error
 		return err
 	}
 
-	// ----- update main -----
+	/* 1. หา user_id ก่อน */
+	var uid int64
+	if err := tx.QueryRowContext(ctx, `SELECT user_id FROM customers WHERE id=? AND is_deleted=0`, id).Scan(&uid); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	/* 2. update users */
 	if c.Password != "" {
 		pwHash, err := hash(c.Password)
 		if err != nil {
@@ -121,33 +139,33 @@ func UpdateCustomer(ctx context.Context, id int64, c model.CustomerCreate) error
 		}
 
 		_, err = tx.ExecContext(ctx,
-			`UPDATE customers SET
-                first_name = ?, last_name = ?, email = ?, phone = ?,
-                national_id = ?, password_hash = ?, updated_at=CURRENT_TIMESTAMP
-              WHERE id=? AND is_deleted=0`,
-			c.FirstName, c.LastName, c.Email, c.Phone,
-			c.NationalID, pwHash, id)
+			`UPDATE users SET first_name=?,last_name=?,email=?,phone=?,password_hash=?,updated_at=CURRENT_TIMESTAMP
+			  WHERE id=? AND is_deleted=0`,
+			c.FirstName, c.LastName, c.Email, c.Phone, pwHash, uid)
 	} else {
 		_, err = tx.ExecContext(ctx,
-			`UPDATE customers SET
-                first_name = ?, last_name = ?, email = ?, phone = ?,
-                national_id = ?, updated_at=CURRENT_TIMESTAMP
-              WHERE id=? AND is_deleted=0`,
-			c.FirstName, c.LastName, c.Email, c.Phone,
-			c.NationalID, id)
+			`UPDATE users SET first_name=?,last_name=?,email=?,phone=?,updated_at=CURRENT_TIMESTAMP
+			  WHERE id=? AND is_deleted=0`,
+			c.FirstName, c.LastName, c.Email, c.Phone, uid)
 	}
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	/* soft-delete old addresses */
-	if _, err := tx.ExecContext(ctx, model.SQL_SOFT_DEL_ADDRESSES, id); err != nil {
+	/* 3. update customers (national_id) */
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE customers SET national_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND is_deleted=0`,
+		c.NationalID, id); err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	/* insert new addresses */
+	/* 4. refresh addresses */
+	if _, err := tx.ExecContext(ctx, model.SQL_SOFT_DEL_ADDRESSES, id); err != nil {
+		tx.Rollback()
+		return err
+	}
 	for _, a := range c.Addresses {
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO addresses
@@ -162,18 +180,24 @@ func UpdateCustomer(ctx context.Context, id int64, c model.CustomerCreate) error
 }
 
 /* -------- DELETE -------- */
-func DeleteCustomer(ctx context.Context, id int64) error {
+func DeleteCustomer(ctx context.Context, cid int64) error {
 	conn := ConnectDB()
 	tx, err := conn.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return err
 	}
 
-	if _, err := tx.ExecContext(ctx, model.SQL_SOFT_DEL_CUSTOMER, id); err != nil {
+	// หา user_id จาก customers
+	var uid int64
+	if err := tx.QueryRowContext(ctx, `SELECT user_id FROM customers WHERE id=?`, cid).Scan(&uid); err != nil {
 		tx.Rollback()
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, model.SQL_SOFT_DEL_ADDRESSES, id); err != nil {
+	if _, err := tx.ExecContext(ctx, model.SQL_SOFT_DEL_USER, uid); err != nil {
+		tx.Rollback()
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, model.SQL_SOFT_DEL_ADDRESSES, cid); err != nil {
 		tx.Rollback()
 		return err
 	}

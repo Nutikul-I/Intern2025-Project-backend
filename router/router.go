@@ -14,6 +14,8 @@ import (
 func SetupRoutes(app *fiber.App) {
 
 	merchantController := controller.NewMerchantController(service.NewMerchantService(handler.NewMerchantHandler()))
+	customerCtl := controller.NewCustomerController(service.NewCustomerService(handler.NewCustomerHandler()))
+	productCtl := controller.NewProductController(service.NewProductService(handler.NewProductHandler()))
 
 	api := app.Group("/", func(c *fiber.Ctx) error {
 		if !strings.Contains(c.Request().URI().String(), "/ping") {
@@ -22,9 +24,6 @@ func SetupRoutes(app *fiber.App) {
 		return c.Next()
 	})
 
-	productCtl := controller.NewProductController(
-		service.NewProductService(handler.NewProductHandler()),
-	)
 	product := api.Group("/api/product")
 	product.Get("/products", productCtl.GetProducts)
 	product.Get("/:id", productCtl.GetProduct)
@@ -32,15 +31,13 @@ func SetupRoutes(app *fiber.App) {
 	product.Put("/:id", productCtl.UpdateProduct)
 	product.Delete("/:id", productCtl.DeleteProduct)
 
-	customerCtl := controller.NewCustomerController(
-		service.NewCustomerService(handler.NewCustomerHandler()),
-	)
-	cust := api.Group("/api/customer")      // /api/customer...
-	cust.Get("/", customerCtl.GetCustomers) // list ?page=1&row=20
-	cust.Get("/:id", customerCtl.GetCustomer)
-	cust.Post("/", customerCtl.CreateCustomer)
-	cust.Put("/:id", customerCtl.UpdateCustomer)
-	cust.Delete("/:id", customerCtl.DeleteCustomer)
+	cust := api.Group("/api/customer")
+
+	cust.Get("/customers", customerCtl.GetCustomers)            // GET  /api/customer/customers?page=&row=
+	cust.Get("/customer", customerCtl.GetCustomer)              // GET  /api/customer/customer?id=11
+	cust.Post("/create-customer", customerCtl.CreateCustomer)   // POST /api/customer/create-customer
+	cust.Put("/update-customer", customerCtl.UpdateCustomer)    // PUT  /api/customer/update-customer?id=11
+	cust.Delete("/delete-customer", customerCtl.DeleteCustomer) // DELETE /api/customer/delete-customer?id=11
 
 	merchant := api.Group("/api/merchant")
 	merchant.Get("/merchant", merchantController.GetMerchant)
