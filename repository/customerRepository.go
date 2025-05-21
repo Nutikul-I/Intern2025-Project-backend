@@ -36,17 +36,24 @@ func GetCustomerDetail(ctx context.Context, id int64) (model.CustomerDetail, err
 	conn := ConnectDB()
 	var detail model.CustomerDetail
 
-	/* main row */
-	if err := scan.Row(&detail, conn.QueryRowContext(ctx, model.SQL_GET_CUSTOMER_DETAIL, id)); err != nil {
-		return detail, err
+	/* ---------- main row ---------- */
+	rows, err := conn.QueryContext(ctx, model.SQL_GET_CUSTOMER_DETAIL, id)
+	if err != nil {
+		return detail, err // query error (DB down ฯลฯ)
+	}
+	defer rows.Close()
+
+	if err := scan.Row(&detail, rows); err != nil {
+		return detail, err // รวมถึง sql.ErrNoRows
 	}
 
-	/* addresses */
+	/* ---------- addresses ---------- */
 	addrRows, _ := conn.QueryContext(ctx, model.SQL_GET_ADDRESS_BY_CUSTOMER, id)
 	defer addrRows.Close()
 	for addrRows.Next() {
 		var a model.AddressPayload
-		_ = addrRows.Scan(&a.ID, &a.Name, &a.Address, &a.City, &a.District, &a.SubDistrict, &a.PostalCode, &a.Phone)
+		_ = addrRows.Scan(&a.ID, &a.Name, &a.Address, &a.City,
+			&a.District, &a.SubDistrict, &a.PostalCode, &a.Phone)
 		detail.Addresses = append(detail.Addresses, a)
 	}
 	return detail, nil
