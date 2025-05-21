@@ -14,6 +14,7 @@ import (
 func SetupRoutes(app *fiber.App) {
 
 	merchantController := controller.NewMerchantController(service.NewMerchantService(handler.NewMerchantHandler()))
+	categoryController := controller.NewCategoryController(service.NewCategoryService(handler.NewcategoryHandler()))
 
 	api := app.Group("/", func(c *fiber.Ctx) error {
 		if !strings.Contains(c.Request().URI().String(), "/ping") {
@@ -45,5 +46,11 @@ func SetupRoutes(app *fiber.App) {
 		}
 		return c.SendString("✅ DB connected!")
 	})
+
+	category := api.Group("/api/category")
+	category.Get("/category", categoryController.GetCategory)
+	category.Post("/create-category", categoryController.CreateCategory)
+	category.Put("/update-category", categoryController.UpdateCategory)
+	category.Delete("/delete-category", categoryController.DeleteCategory)
 
 }
