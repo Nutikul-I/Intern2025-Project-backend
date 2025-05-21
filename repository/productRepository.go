@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"payso-internal-api/model"
 
 	"github.com/blockloop/scan"
@@ -75,22 +76,16 @@ func GetProductDetailRepository(pid int64) (model.ProductDetail, error) {
 	conn := ConnectDB()
 	ctx := context.Background()
 
-	if err := conn.PingContext(ctx); err != nil {
-		log.Errorf("PingContext: %v", err)
-		return model.ProductDetail{}, err
-	}
-
 	var detail model.ProductDetail
 
+	/* --- main detail --- */
 	rows, err := conn.QueryContext(ctx, model.SQL_GET_PRODUCT_DETAIL, pid)
 	if err != nil {
 		return detail, err
 	}
 	defer rows.Close()
-
-	// ❌ อย่าเรียก rows.Next() ที่นี่
 	if err := scan.Row(&detail, rows); err != nil {
-		return detail, err // จะได้ sql.ErrNoRows ก็ต่อเมื่อไม่มีจริง ๆ
+		return detail, err // sql.ErrNoRows ถ้าไม่พบ
 	}
 
 	/* --- images --- */
@@ -111,5 +106,189 @@ func GetProductDetailRepository(pid int64) (model.ProductDetail, error) {
 		detail.Colors = append(detail.Colors, c)
 	}
 
+	/* --- attributes (NEW) --- */
+	attrRows, _ := conn.QueryContext(ctx, model.SQL_GET_PRODUCT_ATTRIB, pid)
+	defer attrRows.Close()
+	for attrRows.Next() {
+		var a model.Attribute
+		_ = attrRows.Scan(&a.Name, &a.Value)
+		detail.Attributes = append(detail.Attributes, a)
+	}
+
 	return detail, nil
+}
+
+func CreateProductRepository(ctx context.Context, p model.ProductCreate) (int64, error) {
+	conn := ConnectDB()
+
+	tx, err := conn.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return 0, err
+	}
+
+	/* ---------- products ---------- */
+	res, err := tx.ExecContext(ctx,
+		`INSERT INTO products (name, description, price, unit_id, category_id)
+		 VALUES (?,?,?,?,?)`,
+		p.Name, p.Description, p.Price, p.UnitID, p.CategoryID,
+	)
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+	pid, err := res.LastInsertId()
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+
+	/* ---------- images ---------- */
+	for _, url := range p.Images {
+		if url == "" {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO product_images (product_id, image_url) VALUES (?,?)`,
+			pid, url); err != nil {
+			tx.Rollback()
+			return 0, err
+		}
+	}
+
+	/* ---------- colors ---------- */
+	for _, c := range p.Colors {
+		if c.Name == "" && c.Hex == "" {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO product_colors (product_id, color_name, color_code) VALUES (?,?,?)`,
+			pid, c.Name, c.Hex); err != nil {
+			tx.Rollback()
+			return 0, err
+		}
+	}
+
+	/* ---------- attributes ---------- */
+	for _, a := range p.Attributes {
+		if a.Name == "" {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO product_attributes (product_id, attribute_name, attribute_value) VALUES (?,?,?)`,
+			pid, a.Name, a.Value); err != nil {
+			tx.Rollback()
+			return 0, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+
+	log.Infof("CreateProductRepository: new product_id=%d", pid)
+	return pid, nil
+}
+
+/* ========================================================= *
+ *  UPDATE
+ * ========================================================= */
+
+func UpdateProductRepository(ctx context.Context, pid int64, p model.ProductCreate) error {
+	conn := ConnectDB()
+	tx, err := conn.BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+
+	/* ---------- 1. update main ---------- */
+	if _, err := tx.ExecContext(ctx, model.SQL_UPDATE_PRODUCT,
+		p.Name, p.Description, p.Price, p.UnitID, p.CategoryID, pid,
+	); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	/* ---------- 2. soft-delete children ---------- */
+	for _, q := range []string{
+		model.SQL_SOFT_DEL_IMAGES,
+		model.SQL_SOFT_DEL_COLORS,
+		model.SQL_SOFT_DEL_ATTR,
+	} {
+		if _, err := tx.ExecContext(ctx, q, pid); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	/* ---------- 3. re-insert children ---------- */
+
+	// images
+	for _, url := range p.Images {
+		if url == "" {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO product_images (product_id, image_url) VALUES (?,?)`,
+			pid, url); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	// colors
+	for _, c := range p.Colors {
+		if c.Name == "" && c.Hex == "" {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO product_colors (product_id, color_name, color_code) VALUES (?,?,?)`,
+			pid, c.Name, c.Hex); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	// attributes
+	for _, a := range p.Attributes {
+		if a.Name == "" {
+			continue
+		}
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO product_attributes (product_id, attribute_name, attribute_value) VALUES (?,?,?)`,
+			pid, a.Name, a.Value); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+/* ---------- DELETE (soft-delete) ---------- */
+func DeleteProductRepository(ctx context.Context, pid int64) error {
+	conn, err := ConnectDB().BeginTx(ctx, &sql.TxOptions{})
+	if err != nil {
+		return err
+	}
+	tx := conn
+
+	// 1. soft-delete main
+	if _, err := tx.ExecContext(ctx, model.SQL_SOFT_DEL_PRODUCT, pid); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// 2. soft-delete children
+	for _, q := range []string{
+		model.SQL_SOFT_DEL_IMAGES,
+		model.SQL_SOFT_DEL_COLORS,
+		model.SQL_SOFT_DEL_ATTR,
+	} {
+		if _, err := tx.ExecContext(ctx, q, pid); err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
