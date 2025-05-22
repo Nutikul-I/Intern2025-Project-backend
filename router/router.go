@@ -19,6 +19,7 @@ func SetupRoutes(app *fiber.App) {
 	customerCtl := controller.NewCustomerController(service.NewCustomerService(handler.NewCustomerHandler()))
 	productCtl := controller.NewProductController(service.NewProductService(handler.NewProductHandler()))
 	discountController := controller.NewDiscountController(service.NewDiscountService(handler.NewDiscountHandler()))
+	orderCtl := controller.NewOrderController(service.NewOrderService(handler.NewOrderHandler()))
 
 	api := app.Group("/", func(c *fiber.Ctx) error {
 		if !strings.Contains(c.Request().URI().String(), "/ping") {
@@ -26,6 +27,12 @@ func SetupRoutes(app *fiber.App) {
 		}
 		return c.Next()
 	})
+
+	order := api.Group("/api/order")
+	order.Get("/orders", orderCtl.List)                // ?page=1&row=20
+	order.Get("/order", orderCtl.Detail)               // ?id=11
+	order.Put("/update-status", orderCtl.UpdateStatus) // ?id=11   body:{ "StatusID": 3 }
+	order.Delete("/delete-order", orderCtl.Delete)     // ?id=11
 
 	product := api.Group("/api/product")
 	product.Get("/products", productCtl.GetProducts)
