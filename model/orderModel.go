@@ -36,6 +36,7 @@ type OrderItemBrief struct {
 	ProductName string  `json:"ProductName" db:"ProductName"`
 	Quantity    int     `json:"Qty"         db:"Qty"`
 	Price       float64 `json:"Price"       db:"Price"`
+	ImageURL    string  `json:"ImageURL"    db:"ImageURL"`
 }
 
 /* ---------- payload สำหรับ Update status ---------- */
@@ -93,9 +94,16 @@ WHERE o.id = ? AND o.is_deleted = 0;
 /* --- Items --- */
 var SQL_GET_ORDER_ITEMS = `
 SELECT
-  p.name  AS ProductName,
-  i.quantity AS Qty,
-  (i.quantity * p.price) AS Price
+  p.name                              AS ProductName,
+  i.quantity                          AS Qty,
+  (i.quantity * p.price)              AS Price,
+  COALESCE(
+        (SELECT image_url
+         FROM   product_images
+         WHERE  product_id = p.id AND is_deleted = 0
+         ORDER  BY id ASC
+         LIMIT 1), ''
+  )                                   AS ImageURL
 FROM order_items i
 JOIN products p ON p.id = i.product_id
 WHERE i.order_id = ? AND i.is_deleted = 0;

@@ -61,7 +61,7 @@ func GetOrderDetail(ctx context.Context, id int64) (model.OrderDetail, error) {
 	defer itemRows.Close()
 	for itemRows.Next() {
 		var it model.OrderItemBrief
-		_ = itemRows.Scan(&it.ProductName, &it.Quantity, &it.Price)
+		_ = itemRows.Scan(&it.ProductName, &it.Quantity, &it.Price, &it.ImageURL)
 		detail.Items = append(detail.Items, it)
 	}
 	return detail, nil
