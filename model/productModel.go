@@ -145,3 +145,13 @@ FROM   product_attributes
 WHERE  product_id = ? AND is_deleted = 0
 ORDER  BY id
 `
+
+/* ---------- INSERT ---------- */
+var SQL_INSERT_PRODUCT = `
+INSERT INTO products
+  (name, description, price, unit_id, category_id)
+VALUES (?,?,?,?,?)`
+
+var SQL_INSERT_PRODUCT_IMAGE = `INSERT INTO product_images  (product_id, image_url)                       VALUES (?,?)`
+var SQL_INSERT_PRODUCT_COLOR = `INSERT INTO product_colors  (product_id, color_name, color_code)           VALUES (?,?,?)`
+var SQL_INSERT_PRODUCT_ATTR = `INSERT INTO product_attributes (product_id, attribute_name, attribute_value) VALUES (?,?,?)`

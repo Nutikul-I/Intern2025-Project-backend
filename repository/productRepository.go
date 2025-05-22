@@ -118,64 +118,52 @@ func GetProductDetailRepository(pid int64) (model.ProductDetail, error) {
 	return detail, nil
 }
 
+/* ---------- Create ---------- */
+
 func CreateProductRepository(ctx context.Context, p model.ProductCreate) (int64, error) {
 	conn := ConnectDB()
-
 	tx, err := conn.BeginTx(ctx, &sql.TxOptions{})
 	if err != nil {
 		return 0, err
 	}
 
-	/* ---------- products ---------- */
-	res, err := tx.ExecContext(ctx,
-		`INSERT INTO products (name, description, price, unit_id, category_id)
-		 VALUES (?,?,?,?,?)`,
-		p.Name, p.Description, p.Price, p.UnitID, p.CategoryID,
-	)
+	/* --- main product --- */
+	res, err := tx.ExecContext(ctx, model.SQL_INSERT_PRODUCT,
+		p.Name, p.Description, p.Price, p.UnitID, p.CategoryID)
 	if err != nil {
 		tx.Rollback()
 		return 0, err
 	}
-	pid, err := res.LastInsertId()
-	if err != nil {
-		tx.Rollback()
-		return 0, err
-	}
+	pid, _ := res.LastInsertId()
 
-	/* ---------- images ---------- */
+	/* --- images --- */
 	for _, url := range p.Images {
 		if url == "" {
 			continue
 		}
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO product_images (product_id, image_url) VALUES (?,?)`,
-			pid, url); err != nil {
+		if _, err := tx.ExecContext(ctx, model.SQL_INSERT_PRODUCT_IMAGE, pid, url); err != nil {
 			tx.Rollback()
 			return 0, err
 		}
 	}
 
-	/* ---------- colors ---------- */
+	/* --- colors --- */
 	for _, c := range p.Colors {
 		if c.Name == "" && c.Hex == "" {
 			continue
 		}
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO product_colors (product_id, color_name, color_code) VALUES (?,?,?)`,
-			pid, c.Name, c.Hex); err != nil {
+		if _, err := tx.ExecContext(ctx, model.SQL_INSERT_PRODUCT_COLOR, pid, c.Name, c.Hex); err != nil {
 			tx.Rollback()
 			return 0, err
 		}
 	}
 
-	/* ---------- attributes ---------- */
+	/* --- attributes --- */
 	for _, a := range p.Attributes {
 		if a.Name == "" {
 			continue
 		}
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO product_attributes (product_id, attribute_name, attribute_value) VALUES (?,?,?)`,
-			pid, a.Name, a.Value); err != nil {
+		if _, err := tx.ExecContext(ctx, model.SQL_INSERT_PRODUCT_ATTR, pid, a.Name, a.Value); err != nil {
 			tx.Rollback()
 			return 0, err
 		}
@@ -184,14 +172,11 @@ func CreateProductRepository(ctx context.Context, p model.ProductCreate) (int64,
 	if err := tx.Commit(); err != nil {
 		return 0, err
 	}
-
 	log.Infof("CreateProductRepository: new product_id=%d", pid)
 	return pid, nil
 }
 
-/* ========================================================= *
- *  UPDATE
- * ========================================================= */
+/* ---------- Update ---------- */
 
 func UpdateProductRepository(ctx context.Context, pid int64, p model.ProductCreate) error {
 	conn := ConnectDB()
@@ -200,15 +185,14 @@ func UpdateProductRepository(ctx context.Context, pid int64, p model.ProductCrea
 		return err
 	}
 
-	/* ---------- 1. update main ---------- */
+	/* 1. update main */
 	if _, err := tx.ExecContext(ctx, model.SQL_UPDATE_PRODUCT,
-		p.Name, p.Description, p.Price, p.UnitID, p.CategoryID, pid,
-	); err != nil {
+		p.Name, p.Description, p.Price, p.UnitID, p.CategoryID, pid); err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	/* ---------- 2. soft-delete children ---------- */
+	/* 2. soft-delete children */
 	for _, q := range []string{
 		model.SQL_SOFT_DEL_IMAGES,
 		model.SQL_SOFT_DEL_COLORS,
@@ -220,42 +204,30 @@ func UpdateProductRepository(ctx context.Context, pid int64, p model.ProductCrea
 		}
 	}
 
-	/* ---------- 3. re-insert children ---------- */
-
-	// images
+	/* 3. re-insert children */
 	for _, url := range p.Images {
 		if url == "" {
 			continue
 		}
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO product_images (product_id, image_url) VALUES (?,?)`,
-			pid, url); err != nil {
+		if _, err := tx.ExecContext(ctx, model.SQL_INSERT_PRODUCT_IMAGE, pid, url); err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
-
-	// colors
 	for _, c := range p.Colors {
 		if c.Name == "" && c.Hex == "" {
 			continue
 		}
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO product_colors (product_id, color_name, color_code) VALUES (?,?,?)`,
-			pid, c.Name, c.Hex); err != nil {
+		if _, err := tx.ExecContext(ctx, model.SQL_INSERT_PRODUCT_COLOR, pid, c.Name, c.Hex); err != nil {
 			tx.Rollback()
 			return err
 		}
 	}
-
-	// attributes
 	for _, a := range p.Attributes {
 		if a.Name == "" {
 			continue
 		}
-		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO product_attributes (product_id, attribute_name, attribute_value) VALUES (?,?,?)`,
-			pid, a.Name, a.Value); err != nil {
+		if _, err := tx.ExecContext(ctx, model.SQL_INSERT_PRODUCT_ATTR, pid, a.Name, a.Value); err != nil {
 			tx.Rollback()
 			return err
 		}
