@@ -6,6 +6,6 @@ type CategoryHandler interface {
 type categoryHandler struct {
 }
 
-func NewcategoryHandler() categoryHandler {
+func NewCategoryHandler() categoryHandler {
 	return categoryHandler{}
 }

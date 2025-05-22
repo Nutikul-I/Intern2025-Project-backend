@@ -15,9 +15,10 @@ func SetupRoutes(app *fiber.App) {
 	permissionService := service.NewPermissionService()
 	permissionController := controller.NewPermissionController(permissionService)
 	merchantController := controller.NewMerchantController(service.NewMerchantService(handler.NewMerchantHandler()))
-	categoryController := controller.NewCategoryController(service.NewCategoryService(handler.NewcategoryHandler()))
+	categoryController := controller.NewCategoryController(service.NewCategoryService(handler.NewCategoryHandler()))
 	customerCtl := controller.NewCustomerController(service.NewCustomerService(handler.NewCustomerHandler()))
 	productCtl := controller.NewProductController(service.NewProductService(handler.NewProductHandler()))
+	discountController := controller.NewDiscountController(service.NewDiscountService(handler.NewDiscountHandler()))
 
 	api := app.Group("/", func(c *fiber.Ctx) error {
 		if !strings.Contains(c.Request().URI().String(), "/ping") {
@@ -59,4 +60,9 @@ func SetupRoutes(app *fiber.App) {
 	permissionRoutes.Put("/update-permission", permissionController.UpdatePermission)    // PUT /api/permission/update
 	permissionRoutes.Delete("/delete-permission", permissionController.DeletePermission) // DELETE /api/permission/delete?id=123
 
+	discount := api.Group("/api/discount")
+	discount.Get("/discount", discountController.GetDiscount)
+	discount.Post("/create-discount", discountController.CreateDiscount)
+	discount.Put("/update-discount", discountController.UpdateDiscount)
+	discount.Delete("/delete-discount", discountController.DeleteDiscount)
 }
