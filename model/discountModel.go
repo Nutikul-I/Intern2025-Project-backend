@@ -55,7 +55,7 @@ VALUES (?, ?, ?, ?, NOW(), NOW(), FALSE);
 
 var SQL_UPDATE_DISCOUNT = `
 UPDATE discounts
-SET code = ?, amount = ?, total_quantity = ?, remaining_quantity = ?, updated_at = NOW()
+SET code = ?, amount = ?, remaining_quantity = ?, updated_at = NOW()
 WHERE id = ? AND is_deleted = FALSE;
 `
 

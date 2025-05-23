@@ -111,7 +111,6 @@ func UpdateDiscountRepository(body model.UpdateDiscount) (model.UpdateResponse, 
 		body.Code,
 		body.Amount,
 		body.TotalQuantity,
-		body.RemainingQuantity,
 		body.Id,
 	)
 	if err != nil {
