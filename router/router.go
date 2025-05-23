@@ -61,11 +61,30 @@ func SetupRoutes(app *fiber.App) {
 	category.Delete("/delete-category", categoryController.DeleteCategory)
 
 	permissionRoutes := api.Group("/api/permission")
+<<<<<<< HEAD
 	permissionRoutes.Get("/permission", permissionController.GetPermissions)             // GET /api/permission?id=0&page=1&row=10
 	permissionRoutes.Get("/detail-permission", permissionController.GetPermissionByID)   // GET /api/permission/detail?id=123
 	permissionRoutes.Post("/create-permission", permissionController.CreatePermission)   // POST /api/permission/create
 	permissionRoutes.Put("/update-permission", permissionController.UpdatePermission)    // PUT /api/permission/update
 	permissionRoutes.Delete("/delete-permission", permissionController.DeletePermission) // DELETE /api/permission/delete?id=123
+=======
+	permissionRoutes.Get("/", permissionController.GetPermissions)                       // GET /api/permission?id=0&page=1&row=10
+	permissionRoutes.Get("/detail", permissionController.GetPermissionByID)              // GET /api/permission/detail?id=123
+	permissionRoutes.Post("/create-permission", permissionController.CreatePermission)   // POST /api/permission/create
+	permissionRoutes.Put("/update-permission", permissionController.UpdatePermission)    // PUT /api/permission/update
+	permissionRoutes.Delete("/delete-permission", permissionController.DeletePermission) // DELETE /api/permission/delete?id=123
+
+	employeeHandler := handler.NewEmployeeHandler()
+	employeeService := service.NewEmployeeService(employeeHandler)
+	employeeController := controller.NewEmployeeController(employeeService)
+
+	employeeRoutes := api.Group("/api/employee")
+	employeeRoutes.Get("/", employeeController.GetEmployees)                     // GET /api/employee?id=0&page=1&row=10
+	employeeRoutes.Get("/detail", employeeController.GetEmployeeByID)            // GET /api/employee/detail?id=123
+	employeeRoutes.Post("/create-employee", employeeController.CreateEmployee)   // POST /api/employee/create
+	employeeRoutes.Put("/update-employee", employeeController.UpdateEmployee)    // PUT /api/employee/update
+	employeeRoutes.Delete("/delete-employee", employeeController.DeleteEmployee) // DELETE /api/employee/delete?id=123
+>>>>>>> feature/employees1
 
 	discount := api.Group("/api/discount")
 	discount.Get("/discount", discountController.GetDiscount)
