@@ -32,6 +32,7 @@ type CustomerDetail struct {
 	Email      *string          `json:"Email"`
 	Phone      *string          `json:"Phone"`
 	NationalID *string          `json:"NationalID"`
+	UserName   *string          `json:"UserName"`
 	Addresses  []AddressPayload `json:"Addresses"`
 }
 
@@ -65,7 +66,8 @@ SELECT
   u.last_name   AS LastName,
   u.email       AS Email,
   u.phone       AS Phone,
-  c.national_id AS NationalID
+  c.national_id AS NationalID,
+  u.user_name   AS UserName
 FROM customers c
 JOIN users u ON u.id = c.user_id AND u.is_deleted = 0
 WHERE c.id = ? AND u.is_deleted = 0;

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"payso-internal-api/handler"
 	"payso-internal-api/model"
 
@@ -19,6 +20,8 @@ type CustomerService interface {
 type customerService struct{ h handler.CustomerHandler }
 
 func NewCustomerService(h handler.CustomerHandler) CustomerService { return &customerService{h} }
+
+var ErrInvalidPayload = errors.New("invalid payload")
 
 func (s *customerService) GetCustomers(ctx context.Context, p, r int) ([]model.CustomerDetail, error) {
 	log.Info("==-- GetCustomers Service --==")
